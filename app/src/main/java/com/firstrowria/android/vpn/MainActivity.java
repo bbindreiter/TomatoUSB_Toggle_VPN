@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int VPN_CONNECT_STATE_DISCONNECTED = 2;
 
     private static final String WIFI_SSID = "";
-    private static final String TOMATO_AUTH = "";
+    private static final String TOMATO_AUTH = ""; //format admin:password
     private static final String TOMATO_START_VPN = "start";
     private static final String TOMATO_STOP_VPN = "stop";
     private static final Pattern LOAD_PATTERN = Pattern.compile("\\(\\d+%\\)");
