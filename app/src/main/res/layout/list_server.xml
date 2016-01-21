@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/locationTextView"
+        android:layout_below="@+id/wifiTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/text_big"
+        android:textColor="@android:color/black"
+        android:text=" " />
+
+
+    <TextView
+        android:id="@+id/hostTextView"
+        android:layout_below="@+id/locationTextView"
+        android:layout_alignParentBottom="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="italic"
+        android:textSize="@dimen/text_normal"
+        android:textColor="@android:color/darker_gray"
+        android:text="" />
+
+
+    <ProgressBar
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="80dp"
+        android:layout_height="wrap_content"
+        android:id="@+id/loadProgressBar"
+        android:max="25"
+        android:indeterminate="false"
+        android:progressBackgroundTint="@android:color/darker_gray"
+        android:layout_above="@+id/loadTextView"
+        android:layout_alignParentRight="true" />
+
+
+    <TextView
+        android:id="@+id/loadTextView"
+        android:layout_below="@+id/locationTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/text_normal"
+        android:textColor="@android:color/darker_gray"
+        android:text=""
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"/>
+
+<!--
+    <View
+        android:id="@+id/separatorVideoView"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#FF303030"
+        android:visibility="gone"/>
+-->
+</RelativeLayout>

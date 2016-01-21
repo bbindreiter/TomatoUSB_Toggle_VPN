@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="0dp"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context="com.firstrowria.android.vpn.MainActivity"
+    tools:showIn="@layout/activity_main">
+
+    <TextView
+        android:id="@+id/wifiTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="@dimen/text_big"
+        android:textColor="@android:color/black"
+        android:text="Wi-FI SSID" />
+
+    <TextView
+        android:id="@+id/ssidTextView"
+        android:layout_below="@+id/wifiTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="italic"
+        android:textSize="@dimen/text_normal"
+        android:text="" />
+
+    <TextView
+        android:layout_marginTop="10dp"
+        android:id="@+id/googleLocationTextView"
+        android:layout_below="@+id/ssidTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="@dimen/text_big"
+        android:textColor="@android:color/black"
+        android:text="IP Location (Google)" />
+
+    <TextView
+        android:id="@+id/googleCountryTextView"
+        android:layout_below="@+id/googleLocationTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="italic"
+        android:textSize="@dimen/text_normal"
+        android:text="" />
+
+    <TextView
+        android:layout_marginTop="10dp"
+        android:id="@+id/wimiaTextView"
+        android:layout_below="@+id/googleCountryTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="@dimen/text_big"
+        android:textColor="@android:color/black"
+        android:text="IP Location (whatismyipaddress.com)" />
+
+    <TextView
+        android:id="@+id/wimiaCountryTextView"
+        android:layout_below="@+id/wimiaTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="italic"
+        android:textSize="@dimen/text_normal"
+        android:text="" />
+
+    <TextView
+        android:layout_marginTop="26dp"
+        android:layout_marginBottom="4dp"
+        android:id="@+id/vpnServersTextView"
+        android:layout_below="@+id/wimiaCountryTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="@dimen/text_huge"
+        android:textColor="@color/colorPrimary"
+        android:text="VPN Servers" />
+
+    <ListView
+        android:id="@+id/serverListView"
+        android:layout_below="@+id/vpnServersTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1">
+    </ListView>
+
+
+</RelativeLayout>
