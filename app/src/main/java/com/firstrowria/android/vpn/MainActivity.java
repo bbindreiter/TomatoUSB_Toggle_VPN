@@ -1,19 +1,14 @@
 package com.firstrowria.android.vpn;
 
-import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Base64;
@@ -27,6 +22,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firstrowria.android.vpn.adapter.VPNServerAdapter;
+import com.firstrowria.android.vpn.network.GoogleLocation;
+import com.firstrowria.android.vpn.network.VPNACServers;
+import com.firstrowria.android.vpn.network.WIMIPLocation;
 import com.firstrowria.android.vpn.vo.VPNServer;
 
 import java.io.BufferedReader;
@@ -35,9 +33,6 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -49,7 +44,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TOMATO_AUTH = ""; //format admin:password
     private static final String TOMATO_START_VPN = "start";
     private static final String TOMATO_STOP_VPN = "stop";
-    private static final Pattern LOAD_PATTERN = Pattern.compile("\\(\\d+%\\)");
 
     private TextView ssidTextView = null;
     private TextView wifiTextView = null;
@@ -73,31 +67,13 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        /*
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-        */
+        ssidTextView = (TextView) findViewById(R.id.ssidTextView);
+        wifiTextView = (TextView) findViewById(R.id.wifiTextView);
 
+        googleCountryTextView = (TextView) findViewById(R.id.googleCountryTextView);
+        wimiaCountryTextView = (TextView) findViewById(R.id.wimiaCountryTextView);
 
-
-
-
-
-
-
-        ssidTextView = (TextView)findViewById(R.id.ssidTextView);
-        wifiTextView = (TextView)findViewById(R.id.wifiTextView);
-
-        googleCountryTextView = (TextView)findViewById(R.id.googleCountryTextView);
-        wimiaCountryTextView = (TextView)findViewById(R.id.wimiaCountryTextView);
-
-        serverListView = (ListView)findViewById(R.id.serverListView);
+        serverListView = (ListView) findViewById(R.id.serverListView);
 
         connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
     }
@@ -124,12 +100,11 @@ public class MainActivity extends AppCompatActivity {
         if (id == R.id.action_reload) {
             loadInfo();
             return true;
-        }
-        else if (id == R.id.action_vpn) {
+        } else if (id == R.id.action_vpn) {
 
             if (vpnConnectState == VPN_CONNECT_STATE_CONNECTED) {
 
-                progressDialog =  ProgressDialog.show(this, "Disconnect", "Please wait...", true);
+                progressDialog = ProgressDialog.show(this, "Disconnect", "Please wait...", true);
                 progressDialog.show();
 
                 (new ConnectVPNServerTask()).execute(TOMATO_STOP_VPN);
@@ -152,101 +127,98 @@ public class MainActivity extends AppCompatActivity {
         googleCountryTextView.setText("");
         wimiaCountryTextView.setText("");
 
-        if (mWifi.getType() == ConnectivityManager.TYPE_WIFI && mWifi.isAvailable() && mWifi.isConnected() && WIFI_SSID.equals(ssid))
-        {
+        if (mWifi.getType() == ConnectivityManager.TYPE_WIFI && mWifi.isAvailable() && mWifi.isConnected() && WIFI_SSID.equals(ssid)) {
             (new GetVPNConnectStatusTask()).execute();
-            (new GetVPNServersTask()).execute();
+            (new GetVPNServersTask(this)).execute();
 
             wifiTextView.setTextColor(Color.BLACK);
-        }
-        else
-        {
+        } else {
             wifiTextView.setTextColor(Color.RED);
         }
 
-        (new GetVPNServersTask()).execute();
+        (new GetVPNServersTask(this)).execute();
         (new GetGoogleLocationTask()).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         (new GetWIMIALocationTask()).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
+    //Get VPN.AC Servers Task
+    private class GetVPNServersTask extends AsyncTask<Void, Void, ArrayList<VPNServer>> {
+
+        private MainActivity mainActivity;
+
+        public GetVPNServersTask(MainActivity mainActivity) {
+            this.mainActivity = mainActivity;
+        }
+
+        protected ArrayList<VPNServer> doInBackground(Void... params) {
+            return VPNACServers.retrieve();
+        }
+
+        protected void onPostExecute(final ArrayList<VPNServer> servers) {
+
+            VPNServerAdapter vpnServerAdapter = new VPNServerAdapter(mainActivity.getApplicationContext(), servers);
+            mainActivity.serverListView.setAdapter(vpnServerAdapter);
+            mainActivity.serverListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
+
+                    if (mainActivity.vpnConnectState == MainActivity.VPN_CONNECT_STATE_CONNECTED) {
+                        Toast.makeText(mainActivity.getApplicationContext(), "You're already connected to a VPN. If you want to connect to a different VPN Server you have to disconnect first", Toast.LENGTH_LONG).show();
+                    } else if (mainActivity.vpnConnectState == MainActivity.VPN_CONNECT_STATE_DISCONNECTED) {
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(mainActivity);
+                        builder.setMessage("Connect to " + servers.get(position).host + "?").setTitle(servers.get(position).country);
+
+                        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+
+                                mainActivity.progressDialog = ProgressDialog.show(mainActivity, "Connect", "Please wait...", true);
+                                mainActivity.progressDialog.show();
+
+                                (new MainActivity.SetVPNServerTask()).execute(servers.get(position).host);
+                            }
+                        });
+                        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                            }
+                        });
+
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                    //Log.d("Activity", "item click" + position);
+                }
+            });
+
+
+        }
+    }
+
+    //Location Tasks
     private class GetGoogleLocationTask extends AsyncTask<Void, Void, String> {
         protected String doInBackground(Void... params) {
-
-            try {
-                Log.d("MainActivity", "Load google location");
-
-                HttpURLConnection connection = (HttpURLConnection) new URL("http://mylocationtest.appspot.com/").openConnection();
-                connection.setRequestProperty("Connection", "close");
-                connection.setUseCaches(false);
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                String inputLine;
-                String country = "";
-
-                while ((inputLine = in.readLine()) != null) {
-
-                    if (inputLine.startsWith("<h3> Country : ") && inputLine.endsWith("</h3>")) {
-                        country = inputLine.substring(15, inputLine.length() - 5);
-                        Log.d("MainActivity", "Google Country: " + country);
-                        break;
-                    }
-                }
-
-                connection.disconnect();
-                return country;
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-                return "Error";
-            }
+            Log.d("MainActivity", "Load google location");
+                return GoogleLocation.getLocation();
         }
 
         protected void onPostExecute(String result) {
             //showDialog("Downloaded " + result + " bytes");
-            googleCountryTextView.setText(result);
+            googleCountryTextView.setText(result != null ? result : "Error");
         }
     }
 
     private class GetWIMIALocationTask extends AsyncTask<Void, Void, String> {
         protected String doInBackground(Void... params) {
-
-            try {
-                Log.d("MainActivity", "Load wimia location");
-
-                HttpURLConnection connection = (HttpURLConnection) new URL("http://whatismyipaddress.com/").openConnection();
-                connection.setRequestProperty("Connection", "close");
-                connection.setUseCaches(false);
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                String inputLine;
-                String country = "";
-
-                while ((inputLine = in.readLine()) != null) {
-
-                    inputLine = inputLine.trim();
-
-                    if (inputLine.startsWith("<tr><th style=\"font-weight:bold;color:#676769;\">Country:</th><td style=\"font-size:14px;\">") && inputLine.endsWith("</td></tr>")) {
-                        country = inputLine.substring(89, inputLine.length() - 10);
-                        Log.d("MainActivity", "WIMIA Country: " + country);
-                        break;
-                    }
-                }
-
-                connection.disconnect();
-                return country;
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-                return "Error";
-            }
+            Log.d("MainActivity", "Load wimia location");
+            return WIMIPLocation.getLocation();
         }
 
         protected void onPostExecute(String result) {
-            //showDialog("Downloaded " + result + " bytes");
-            wimiaCountryTextView.setText(result);
+            wimiaCountryTextView.setText(result != null ? result : "Error");
         }
     }
 
+    //TomatoUSB Router Tasks
     private class GetVPNConnectStatusTask extends AsyncTask<Void, Void, Integer> {
         protected Integer doInBackground(Void... params) {
 
@@ -266,8 +238,7 @@ public class MainActivity extends AppCompatActivity {
                         state = inputLine.equals("vpn1up = parseInt('1');") ? VPN_CONNECT_STATE_CONNECTED : VPN_CONNECT_STATE_DISCONNECTED;
                         Log.d("MainActivity", "tomato vpn status is: " + state + " // " + inputLine);
                         break;
-                    }
-                    else if (inputLine.contains("'http_id': '")) {
+                    } else if (inputLine.contains("'http_id': '")) {
 
                         int index = inputLine.indexOf("'http_id': '");
                         tomatoHttpId = inputLine.substring(index + 12, inputLine.length() - 2);
@@ -277,8 +248,7 @@ public class MainActivity extends AppCompatActivity {
 
                 in.close();
                 connection.disconnect();
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
@@ -328,8 +298,7 @@ public class MainActivity extends AppCompatActivity {
 
                 in.close();
                 connection.disconnect();
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
@@ -390,11 +359,10 @@ public class MainActivity extends AppCompatActivity {
 
 
                 if (params[0].equals(TOMATO_START_VPN)) {
-                   Log.d("MainActivity", "sleep 15 sec after connect");
-                   Thread.sleep(15000);
+                    Log.d("MainActivity", "sleep 15 sec after connect");
+                    Thread.sleep(15000);
                 }
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
@@ -423,127 +391,5 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private class GetVPNServersTask extends AsyncTask<Void, Void, ArrayList<VPNServer>> {
-        protected ArrayList<VPNServer> doInBackground(Void... params) {
 
-            ArrayList<VPNServer> servers = new ArrayList<>();
-
-            try {
-                BufferedReader in = new BufferedReader(new InputStreamReader((new URL("https://vpn.ac/status")).openStream()));
-
-                String inputLine;
-                VPNServer vpnServer = null;
-                boolean inTable = false;
-                boolean inTr = false;
-                int tdCount = 0;
-
-                while ((inputLine = in.readLine()) != null) {
-
-                    inputLine = inputLine.trim();
-                    if (inputLine.startsWith("<tbody>")) {
-                        inTable = true;
-                    }
-                    else if (inTable && inputLine.startsWith("<tr")) {
-                        inTr = true;
-                        tdCount = 0;
-                    }
-                    else if (inTable && inTr && inputLine.startsWith("<td>") && inputLine.endsWith("</td>")) {
-                        String data = inputLine.substring(4, inputLine.length() - 5);
-
-                        if (tdCount == 0) {
-                            vpnServer = new VPNServer();
-                            vpnServer.host = data;
-                        }
-                        else if (tdCount == 1) {
-                            vpnServer.country = data;
-                        }
-                        else if (tdCount == 2) {
-                            vpnServer.load = data;
-
-                            try {
-                                if (!data.contains("very low"))
-                                {
-                                    Matcher matcher = LOAD_PATTERN.matcher(data);
-
-                                    if (matcher.find())
-                                    {
-                                        String loadPercentage = matcher.group(0);
-                                        vpnServer.loadPercentage = Integer.parseInt(loadPercentage.substring(1, loadPercentage.length() - 2));
-
-                                        if (vpnServer.loadPercentage > 25)
-                                            vpnServer.loadPercentage = 25;
-                                        else if (vpnServer.loadPercentage == 0)
-                                            vpnServer.loadPercentage = 1;
-                                    }
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                e.printStackTrace();
-                            }
-
-
-                            servers.add(vpnServer);
-                        }
-
-                        tdCount++;
-                    }
-                    else if (inputLine.startsWith("</tr>")) {
-                        inTr = false;
-                    }
-                    else if (inputLine.startsWith("</tbody>")) {
-                        inTable = false;
-                    }
-                }
-
-                in.close();
-
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-            }
-
-            return servers;
-        }
-
-        protected void onPostExecute(final ArrayList<VPNServer> servers) {
-
-            VPNServerAdapter vpnServerAdapter = new VPNServerAdapter(getApplicationContext(), servers);
-            serverListView.setAdapter(vpnServerAdapter);
-            serverListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, final int position, long id) {
-
-                    if (vpnConnectState == VPN_CONNECT_STATE_CONNECTED) {
-                        Toast.makeText(getApplicationContext(), "You're already connected to a VPN. If you want to connect to a different VPN Server you have to disconnect first", Toast.LENGTH_LONG).show();
-                    }
-                    else if (vpnConnectState == VPN_CONNECT_STATE_DISCONNECTED) {
-
-                        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                        builder.setMessage("Connect to " + servers.get(position).host + "?").setTitle(servers.get(position).country);
-
-                        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int id) {
-
-                                progressDialog =  ProgressDialog.show(MainActivity.this, "Connect", "Please wait...", true);
-                                progressDialog.show();
-
-                                (new SetVPNServerTask()).execute(servers.get(position).host);
-                            }
-                        });
-                        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int id) {
-                            }
-                        });
-
-                        AlertDialog dialog = builder.create();
-                        dialog.show();
-                    }
-                    //Log.d("Activity", "item click" + position);
-                }
-            });
-
-
-        }
-    }
 }
